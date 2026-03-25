@@ -5,12 +5,14 @@ $con = conexion();
 $buscar = isset($_GET["buscar"]) ? $_GET["buscar"] : "";
 
 if ($buscar != "") {
-    $sql = "SELECT * FROM persona WHERE documento LIKE $1 OR nombre LIKE $1 OR apellido LIKE $1 OR direccion LIKE $1 OR celular LIKE $1 ORDER BY id ASC";
+    $sql = "SELECT * FROM persona WHERE documento::text LIKE $1 OR nombre LIKE $1 OR apellido LIKE $1 OR direccion LIKE $1 OR celular LIKE $1";
     $resultado = pg_query_params($con, $sql, ["%" . $buscar . "%"]);
 } else {
-    $sql = "SELECT * FROM persona ORDER BY id ASC";
+    $sql = "SELECT * FROM persona";
     $resultado = pg_query($con, $sql);
 }
+
+$numRows = $resultado ? pg_num_rows($resultado) : 0;
 ?>
 <!doctype html>
 <html lang="es">
@@ -55,24 +57,25 @@ if ($buscar != "") {
             <table class="table table-striped table-hover">
               <thead class="thead-dark">
                 <tr>
-                  <th>ID</th>
-                  <th>Documento</th>
-                  <th>Nombre</th>
-                  <th>Apellido</th>
-                  <th>Direccion</th>
-                  <th>Celular</th>
+                  <?php
+                  if ($resultado && $numRows > 0) {
+                      $numCols = pg_num_fields($resultado);
+                      for ($i = 0; $i < $numCols; $i++) {
+                          echo "<th>" . htmlspecialchars(ucfirst(pg_field_name($resultado, $i))) . "</th>";
+                      }
+                  } else {
+                      echo "<th>Documento</th><th>Nombre</th><th>Apellido</th><th>Direccion</th><th>Celular</th>";
+                  }
+                  ?>
                 </tr>
               </thead>
               <tbody>
-                <?php if (pg_num_rows($resultado) > 0): ?>
-                  <?php while ($fila = pg_fetch_assoc($resultado)): ?>
+                <?php if ($numRows > 0): ?>
+                  <?php while ($fila = pg_fetch_row($resultado)): ?>
                     <tr>
-                      <td><?php echo htmlspecialchars($fila["id"]); ?></td>
-                      <td><?php echo htmlspecialchars($fila["documento"]); ?></td>
-                      <td><?php echo htmlspecialchars($fila["nombre"]); ?></td>
-                      <td><?php echo htmlspecialchars($fila["apellido"]); ?></td>
-                      <td><?php echo htmlspecialchars($fila["direccion"]); ?></td>
-                      <td><?php echo htmlspecialchars($fila["celular"]); ?></td>
+                      <?php foreach ($fila as $valor): ?>
+                        <td><?php echo htmlspecialchars($valor); ?></td>
+                      <?php endforeach; ?>
                     </tr>
                   <?php endwhile; ?>
                 <?php else: ?>
@@ -83,7 +86,7 @@ if ($buscar != "") {
               </tbody>
             </table>
           </div>
-          <p class="text-muted mb-0">Total de registros: <?php echo pg_num_rows($resultado); ?></p>
+          <p class="text-muted mb-0">Total de registros: <?php echo $numRows; ?></p>
         </div>
       </div>
 
